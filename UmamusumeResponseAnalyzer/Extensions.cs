@@ -25,6 +25,7 @@ namespace UmamusumeResponseAnalyzer
         LArc = 6,
         UAF = 7,
         Cook = 8,
+        Mecha = 9,
         Unknown = int.MaxValue
     }
     public static class Extensions
@@ -42,8 +43,8 @@ namespace UmamusumeResponseAnalyzer
 
             for (i = 0; i <= input.Length - pattern.Length; i++)
             {
-                bool foundMatch = true;
-                for (int j = 0; j < pattern.Length; j++)
+                var foundMatch = true;
+                for (var j = 0; j < pattern.Length; j++)
                 {
                     if (input[i + j] != pattern[j])
                     {
@@ -68,18 +69,13 @@ namespace UmamusumeResponseAnalyzer
                 result.Add(input[i]);
             }
 
-            return result.ToArray();
+            return [.. result];
         }
         public static SystemVersion GetSystemVersion(this OperatingSystem _)
         {
-            if (Environment.OSVersion.Version.Major == 6 && Environment.OSVersion.Version.Minor == 1)
-                return SystemVersion.Windows7;
-            return SystemVersion.Default;
-        }
-        public static byte[] GetContentMD5(this HttpContentHeaders headers)
-        {
-            headers.TryGetValues("content-md5", out var values);
-            return Convert.FromBase64String(values!.First());
+            return Environment.OSVersion.Version.Major == 6 && Environment.OSVersion.Version.Minor == 1
+                ? SystemVersion.Windows7
+                : SystemVersion.Default;
         }
         public static bool Contains<T>(this IEnumerable<T> list, Predicate<T> predicate)
         {
@@ -105,6 +101,8 @@ namespace UmamusumeResponseAnalyzer
                 ScenarioType.GrandMasters => data.chara_info.scenario_id == 5 && data.venus_data_set != null,
                 ScenarioType.LArc => data.chara_info.scenario_id == 6 && data.arc_data_set != null,
                 ScenarioType.UAF => data.chara_info.scenario_id == 7 && data.sport_data_set != null,
+                ScenarioType.Cook => data.chara_info.scenario_id == 8 && data.cook_data_set != null,
+                ScenarioType.Mecha => data.chara_info.scenario_id == 9 && data.mecha_data_set != null,
                 ScenarioType.Unknown => true,
                 _ => false
             };
@@ -112,12 +110,12 @@ namespace UmamusumeResponseAnalyzer
     }
     public static class TableExtension
     {
-        static Dictionary<Table, Dictionary<(int, int), string>> saved = new();
+        static readonly Dictionary<Table, Dictionary<(int, int), string>> saved = [];
         private static void Prepare(this Table table)
         {
             if (!saved.ContainsKey(table))
             {
-                saved.Add(table, new Dictionary<(int, int), string>());
+                saved.Add(table, []);
             }
         }
         public static bool Edit(this Table? table, int column, int row, string content)
@@ -158,7 +156,7 @@ namespace UmamusumeResponseAnalyzer
         {
             if (_dictionaries.TryGetValue(mre, out var waitings))
             {
-                if (waitings.Any())
+                if (!waitings.IsEmpty)
                     mre.Set();
             }
         }
