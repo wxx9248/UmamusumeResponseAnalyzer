@@ -336,50 +336,20 @@ namespace UmamusumeResponseAnalyzer
             {
                 AnsiConsole.Clear();
                 var uraCorePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UmamusumeResponseAnalyzer", "ura-core.dll");
-                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("UmamusumeResponseAnalyzer.ura-core.dll");
-                if (stream == null)
-                {
-                    AnsiConsole.WriteLine(I18N_UraCoreHelper_ExtractUraCoreFail);
-                    Console.ReadKey();
-                    AnsiConsole.Clear();
-                    return prompt;
-                }
-                InstallModule(uraCorePath);
+                await ResourceUpdater.DownloadUraCore(uraCorePath);
                 AnsiConsole.WriteLine(I18N_UraCoreHelper_FoundPaths, UraCoreHelper.GamePaths.Count);
 
                 foreach (var i in UraCoreHelper.GamePaths)
                 {
                     AnsiConsole.WriteLine(I18N_UraCoreHelper_FoundAvailablePath, i);
-                    var configPath = Path.Combine(i, "config.json");
-                    if (File.Exists(configPath))
-                    {
-                        var config = JObject.Parse(File.ReadAllText(configPath));
-                        if (File.Exists(Path.Combine(i, "tlg.dll")) && config.ContainsKey("loadDll") && config["loadDll"] is JArray loadDll && !loadDll.Any(x => x.ToString() == uraCorePath)) // TLG
-                        {
-                            loadDll.Add(uraCorePath);
-                            File.WriteAllText(configPath, config.ToString(Formatting.Indented));
-                            AnsiConsole.WriteLine(I18N_UraCoreHelper_InstallSuccess, "Trainer-Legend-G");
-                        }
-                        else if (File.Exists(Path.Combine(i, "version.dll")) && config.ContainsKey("externalDlls") && config["externalDlls"] is JArray externalDlls && !externalDlls.Any(x => x.ToString() == uraCorePath))
-                        {
-                            externalDlls.Add(uraCorePath);
-                            File.WriteAllText(configPath, config.ToString(Formatting.Indented));
-                            AnsiConsole.WriteLine(I18N_UraCoreHelper_InstallSuccess, "umamusume-localify");
-                        }
-                        else
-                        {
-                            AnsiConsole.WriteLine(I18N_UraCoreHelper_NoInstalledModuleFound);
-                        }
-                    }
+                    /// TODO
+                    /// 判断umamusume.exe.local是否存在
+                    ///     直接修改loadDll或者引导开启msgpackNotifier
+                    /// 否则
+                    ///     直接下载kimjio localify并安装（记得提醒安全风险）
+                    ///     或引导使用TLG（记得免责声明）
                 }
                 Console.ReadKey();
-                void InstallModule(string path)
-                {
-                    using var fs = File.Create(path);
-                    stream.CopyTo(fs);
-                    fs.Flush();
-                    fs.Close();
-                }
             }
             else if (prompt == I18N_SetLocalizedDataFilePath)
             {
@@ -421,16 +391,14 @@ namespace UmamusumeResponseAnalyzer
 
                     if (dmmSelected == I18N_AddAccount)
                     {
-                        var secureId = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputLoginSecureIdPrompt));
-                        var sessionId = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputLoginSessionIdPrompt));
+                        var actauth = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputActauthPrompt));
                         var savedataPath = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputSaveDataFilePathPrompt).AllowEmpty());
                         var executablePath = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputSplitUmamusumeFilePathPrompt).AllowEmpty());
                         var name = AnsiConsole.Prompt(new TextPrompt<string>(I18N_InputAccountCommentPrompt));
 
                         var account = new DMM.DMMAccount
                         {
-                            login_secure_id = secureId,
-                            login_session_id = sessionId,
+                            actauth = actauth,
                             savedata_file_path = savedataPath,
                             split_umamusume_file_path = executablePath,
                             Name = name,

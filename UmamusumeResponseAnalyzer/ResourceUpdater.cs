@@ -12,7 +12,14 @@ namespace UmamusumeResponseAnalyzer
     public static class ResourceUpdater
     {
         static readonly string UPDATE_RECORD_FILEPATH = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UmamusumeResponseAnalyzer", ".update_record");
-        static readonly ConcurrentBag<string> ETAG_RECORDS = new(File.ReadAllLines(UPDATE_RECORD_FILEPATH));
+        static readonly ConcurrentBag<string> ETAG_RECORDS = [];
+        static ResourceUpdater()
+        {
+            if (File.Exists(UPDATE_RECORD_FILEPATH))
+            {
+                ETAG_RECORDS = new(File.ReadAllLines(UPDATE_RECORD_FILEPATH));
+            }
+        }
         public static async Task TryUpdateProgram(string savepath = null!)
         {
             var path = Path.Combine(Path.GetTempPath(), "latest-UmamusumeResponseAnalyzer.exe");
@@ -170,6 +177,25 @@ namespace UmamusumeResponseAnalyzer
             }
             Console.WriteLine(Localization.LaunchMenu.I18N_Options_BackToMenuInstruction);
             Console.ReadKey();
+        }
+        public static async Task DownloadUraCore(string path)
+        {
+            if (!File.Exists(path))
+            {
+                await AnsiConsole.Progress()
+                    .Columns(
+                    [
+                            new TaskDescriptionColumn(),
+                        new ProgressBarColumn(),
+                        new PercentageColumn(),
+                        new RemainingTimeColumn(),
+                        new SpinnerColumn()
+                    ])
+                    .StartAsync(async ctx =>
+                    {
+                        await Download(ctx, I18N_DownloadingUraCore, path);
+                    });
+            }
         }
         public static async Task DownloadNetFilter(string nfapiPath, string nfdriverPath, string redirectorPath)
         {
