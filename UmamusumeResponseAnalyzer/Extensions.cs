@@ -1,20 +1,12 @@
 ﻿using Gallop;
+using Newtonsoft.Json.Linq;
 using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
 
 namespace UmamusumeResponseAnalyzer
 {
-    public enum SystemVersion
-    {
-        Default = 0,
-        Windows7 = 1
-    }
     public enum ScenarioType
     {
         Ura = 1,
@@ -27,6 +19,7 @@ namespace UmamusumeResponseAnalyzer
         Cook = 8,
         Mecha = 9,
         Legend = 10,
+        Pioneer = 11,
         Unknown = int.MaxValue
     }
     public static class Extensions
@@ -72,12 +65,6 @@ namespace UmamusumeResponseAnalyzer
 
             return [.. result];
         }
-        public static SystemVersion GetSystemVersion(this OperatingSystem _)
-        {
-            return Environment.OSVersion.Version.Major == 6 && Environment.OSVersion.Version.Minor == 1
-                ? SystemVersion.Windows7
-                : SystemVersion.Default;
-        }
         public static bool Contains<T>(this IEnumerable<T> list, Predicate<T> predicate)
         {
             if (list == default || !list.Any()) return false;
@@ -108,6 +95,49 @@ namespace UmamusumeResponseAnalyzer
                 ScenarioType.Unknown => true,
                 _ => false
             };
+        }
+        public static string AllowMirror(this string? url)
+        {
+            if (url == null) return string.Empty;
+            if (Config.Updater.IsGithubBlocked && !Config.Updater.ForceUseGithubToUpdate)
+            {
+                url = url.Replace("https://", "https://gh.shuise.dev/");
+            }
+            return url;
+        }
+        public static string AppendValue(this PropertyInfo property, object? obj, Dictionary<string, string> translatedDic = null!)
+        {
+            var value = property.GetValue(obj);
+            var valueString = string.Empty;
+            if (value is IEnumerable<string> enumerable)
+            {
+                valueString = string.Join(",", enumerable.Select(x => x.Replace("[", "[[").Replace("]", "]]")));
+            }
+            else if (value is IDictionary<string, string> dictionary)
+            {
+                valueString = string.Join(',', dictionary.Keys);
+            }
+            else
+            {
+                valueString = value?.ToString()?.Replace("[", "[[").Replace("]", "]]") ?? string.Empty;
+            }
+            if (translatedDic == null) return $"{property.Name}: {valueString}";
+
+            translatedDic.TryGetValue(property.Name, out var translated);
+            return $"{translated ?? property.Name}: {valueString}";
+        }
+        public static bool HasCharaInfo(this JObject? jo)
+        {
+            return jo != null && jo.ContainsKey("data") && jo["data"].ContainsKey("chara_info");
+        }
+        public static bool ContainsKey(this JToken? jt, string key)
+        {
+            return jt != null && jt is JObject jo && jo.ContainsKey(key);
+        }
+        public static int ToInt(this JToken? jt) => jt?.ToObject<int>() ?? 0;
+        public static bool IsNull(this JToken? jt)
+        {
+            return jt == null || jt.Type == JTokenType.Null;
         }
     }
     public static class TableExtension
